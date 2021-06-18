@@ -11,11 +11,6 @@
         int error;  // error value 0 --> no error 1--> error
     };
 
-    struct sensorReady{
-        bool ready;
-        unsigned long previosMillis;
-    };
-
     struct wifiStat {        
         const char* mac;
         const char* ssid;
@@ -57,12 +52,5 @@
             static void onMqttUnsubscribe(uint16_t packetId) ;
             static void onMqttPublish(uint16_t packetId);   
     };
-
-    class espSensor {
-        public:   
-            espSensor();
-            ~espSensor();
-            static sensorReady sensorlatency(unsigned long previousMillis, int dly);   
-    };    
-       
+   
 #endif

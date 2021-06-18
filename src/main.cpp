@@ -69,7 +69,7 @@
 #include "espMQTT-WiFi.h"
 #include "espRelay.h"
 #include "espWebSvr.h"
-#include "WiFi-DHT-MQTT-WebSvr.h"
+#include "espDHT.h"
 
 
 
@@ -95,10 +95,10 @@ void sendData(SensorData& sensordata);
 
 // Generally, you should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
-long previousMillis = millis();        //initialize previousMillis variable in milliseconds
-long previousTm = previousMillis; 
-long startTm = previousMillis; 
-int sendCount = 0;
+// long previousMillis = millis();        //initialize previousMillis variable in milliseconds
+// long previousTm = previousMillis; 
+// long startTm = previousMillis; 
+// int sendCount = 0;
 
 char dayStamp[11];
 char timeStamp1[6];
@@ -114,4 +114,10 @@ espCFG mycfg;
 void setup() {
   //  mycfg.loadConfiguration();  
   cfgBegin();
-  ];
+  
+
+};
+
+void loop() {
+
+};

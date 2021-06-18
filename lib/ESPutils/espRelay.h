@@ -1,6 +1,8 @@
 #ifndef __espRelay_H
 #define __espRealy_H
 
+#include "SwitchData.h"
+
     class espRelay {
         public:
             espRelay();

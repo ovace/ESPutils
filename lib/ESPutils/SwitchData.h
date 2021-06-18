@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 //json construct setup
 struct SwitchData {
   String date;

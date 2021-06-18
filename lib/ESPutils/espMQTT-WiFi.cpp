@@ -41,7 +41,7 @@ WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
 Ticker wifiReconnectTimer;
 
-long interval = 1000;        // Interval at which to publish sensor readings (1000=1sec Interval = 1 min)
+static long interval = 1000;        // Interval at which to publish sensor readings (1000=1sec Interval = 1 min)
 
 espMQTT::espMQTT() { //Class constructor
 
@@ -56,13 +56,6 @@ espWiFi::espWiFi() { //Class constructor
 espWiFi::~espWiFi() { //Class desstructor
 
 };
-
-espSensor::espSensor() { //Class constructor
-};
-
-espSensor::~espSensor() { //Class destructor
-};
-
 
 void espWiFi::wifiSetup() {  
   espWiFi::connectToWifi();  
@@ -179,27 +172,5 @@ void espMQTT::onMqttPublish(uint16_t packetId) {
 void espMQTT::mqttpub(const char* TOPIC, const char* PAYLOAD){
   // Publish an MQTT message on topic 
     uint16_t packetIdPub1 = mqttClient.publish(TOPIC, 1, true, PAYLOAD);
-};
-
-
-sensorReady espSensor::sensorlatency(unsigned long previousMillis, int dly){
-  // minimum wait between sensor reads
-  interval = TIME_TO_WAIT;
-
-  sensorReady val = {0, previousMillis};
-  
-   unsigned long currentMillis = millis();
-  
-  if (currentMillis - previousMillis >= interval + dly) {
-    // Save the last time a new reading was published
-    previousMillis = currentMillis;
-
-    val.ready= 1;
-    val.previosMillis = previousMillis;
-
-    return val;
-
-  }
-  return val;
 };
 
