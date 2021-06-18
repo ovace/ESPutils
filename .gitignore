@@ -3,6 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Project specific file and folders
+data/*
+*config.json
+
 # User-specific files
 *.rsuser
 *.suo
@@ -92,6 +96,7 @@ StyleCopReport.xml
 *.pidb
 *.svclog
 *.scc
+.pio
 
 # Chutzpah Test files
 _Chutzpah*
