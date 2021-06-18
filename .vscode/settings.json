@@ -1,6 +1,0 @@
-{
-    "editor.wordWrap": "on",
-    "files.exclude": {
-        "Data": true
-    }
-}
