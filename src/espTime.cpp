@@ -192,7 +192,7 @@ bool espTime::getNTPtime(int sec) {
         Serial.print("millis "); Serial.println(millis());
         Serial.print("start "); Serial.println(start);
         Serial.printf("sec %i \n",sec);
-        Serial.print("timeinfo.tm_year "); Serial.println(timeinfo.tm_year);
+        Serial.print("timeinfo.tm_year "); Serial.println(timeinfo -> tm_year);
         Serial.print("millis() - start ");Serial.println(millis() - start);
         Serial.println("2016 - 1900 ");Serial.println(2016 - 1900);
         Serial.println("getNTPtime debug End***");
