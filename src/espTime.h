@@ -11,6 +11,7 @@
         public:
             espTime();
             ~espTime();
+            static void NTPstart();
             static String getCurTimestamp(); 
             static String getCurDate();
             static void setClock();   
@@ -18,8 +19,7 @@
             static void getEpoch();
             static void getTimeData();
             static void example();
-        private:
-            void setup();
+        private:            
             void getNTP();
             bool getNTPtime(int sec);
     };

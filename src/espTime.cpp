@@ -76,7 +76,7 @@ espTime::espTime() { //Class constructor
 espTime::~espTime() { //Class destructor
 };
 
-void espTime::setup() {
+void espTime::NTPstart() {
 
     esptime.getNTP();
 
