@@ -3,21 +3,21 @@
 */
 
 #include <Arduino.h>
-#include <time.h>                   // time() ctime()
+#include <time.h>           // time() ctime()
+#include <string.h>
 
 #include "espTime.h"
 #include "getCfg.h"
 
+espTime esptime;
 
 /* Globals */
 struct tm;
-time_t now;                         // this is the epoch
-tm timeinfo;                // the structure tm holds time information in a more convient way
+time_t now;                 // this is the epoch
+tm timeinfo;                // the structure timeinfo holds time information in a more convient way
 long unsigned lastNTPtime;
 unsigned long lastEntryTime;
 
-
-////Chrono myChrono(Chrono::SECONDS);
 
 
 // // Define NTP Client to get time
@@ -35,24 +35,26 @@ unsigned long lastEntryTime;
 #define MY_TZ 	"UTC0"  // UTC Etc/Universal	
 
 espTime::espTime() { //Class constructor
-
 };
 espTime::~espTime() { //Class destructor
-
 };
+
 void espTime::setup() {
 
   configTime(MY_TZ, NTP_SERVER1, NTP_SERVER2); // --> Here is the IMPORTANT ONE LINER needed in your sketch!  
 
 
   // configTime(0, 0, NTP_SERVER1, NTP_SERVER2); // --> Here is the IMPORTANT ONE LINER needed in your sketch!  
-  // setenv("TZ", MY_TZ, 1);
+  
+  // setenv("TZ", MY_TZ, 1);  //not avalable in windows
+  // putenv("TZ=" MY_TZ);  // if not included, localtime = gmtime
 
-  if (getNTPtime(10)) {  // wait up to 10sec to sync
-  } else {
+  Serial.println(esptime.getNTPtime(10));
+  // if (esptime.getNTPtime(10)) {  // wait up to 10sec to sync
+  // } else {
     Serial.println("Time not set");
     ESP.restart();
-  }
+  // }
   showTime(timeinfo);
   lastNTPtime = time(&now);
   lastEntryTime = millis();
@@ -61,7 +63,7 @@ void espTime::setup() {
 
 String espTime::getCurTimestamp () {
   // initialize NTPClient
-  espTime::setup();
+  esptime.setup();
   //Update time  
   time(&now);                       // read the current time
   localtime_r(&now, &timeinfo);     // update the structure tm with the current time
@@ -78,7 +80,7 @@ String espTime::getCurTimestamp () {
 
 String espTime::getCurDate () {
   // initialize NTPClient
-  espTime::setup();
+  esptime.setup();
  
   time(&now);                       // read the current time
   localtime_r(&now, &timeinfo);     // update the structure tm with the current time
@@ -121,7 +123,7 @@ void espTime::showTime() {
 */
 
  // Shorter way of displaying the time
-  void espTime::showTime(tm localTime) {
+void espTime::showTime(tm localTime) {
   Serial.printf(
     "%04d-%02d-%02d %02d:%02d:%02d, day %d, %s time\n",
     localTime.tm_year + 1900,
@@ -133,25 +135,30 @@ void espTime::showTime() {
     (localTime.tm_wday > 0 ? localTime.tm_wday : 7 ),
     (localTime.tm_isdst == 1 ? "summer" : "standard")
   );
-  }
+}
 
-bool getNTPtime(int sec) {
-
-  {
+bool espTime::getNTPtime(int sec) {
+  
     uint32_t start = millis();
     do {
       time(&now);
       localtime_r(&now, &timeinfo);
       Serial.print(".");
       delay(10);
-    } while (((millis() - start) <= (1000 * sec)) && (timeinfo.tm_year < (2016 - 1900)));
-    if (timeinfo.tm_year <= (2016 - 1900)) return false;  // the NTP call was not successful
+    } while (((millis() - start) <= (1000 * sec))
+       && (timeinfo.tm_year < (2016 - 1900))
+      );
+    if (timeinfo.tm_year <= (2016 - 1900)) {
+      return false;  // the NTP call was not successful
+    };
+    // time(&now);
+    // localtime_r(&now, &timeinfo);
     Serial.print("now ");  Serial.println(now);
     char time_output[30];
     strftime(time_output, 30, "%a  %d-%m-%y %T", localtime(&now));
     Serial.println(time_output);
     Serial.println();
-  }
+  
   return true;
 }
 

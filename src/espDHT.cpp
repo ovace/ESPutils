@@ -15,6 +15,9 @@
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
 
+// instantiate espDHT
+espDHT espdht;
+
 
 static long interval = 1000;        // Interval at which to publish sensor readings (1000=1sec Interval = 1 min)
 
@@ -25,7 +28,7 @@ espDHT::~espDHT() { //Class destructor
 
 void espDHT::DHTsetup(){
   //Serial.printf("DHTTYPE: %s", DHTTYPE);  
-  espDHT::initDHT();
+  espdht.initDHT();
 };
 
 void espDHT::initDHT() {
@@ -67,7 +70,7 @@ float espDHT::readDHTHumid(){
 
 sensorReady espDHT::sensorlatency(unsigned long previousMillis, int dly){
   // minimum wait between sensor reads
-  interval = espDHT::getMinimumSamplingPeriod();
+  interval = espdht.getMinimumSamplingPeriod();
 
   sensorReady val = {0, previousMillis};
   

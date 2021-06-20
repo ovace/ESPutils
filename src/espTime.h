@@ -16,8 +16,8 @@
             static void setClock();   
             // static void espTime::showTime(); 
             static void showTime(tm localTime);
-        private:
-            static void setup();
-            static bool getNTPtime(int sec);
+        //private:
+            void setup();
+            bool getNTPtime(int sec);
     };
 #endif

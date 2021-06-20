@@ -20,12 +20,10 @@
 
 #ifdef ESP32
   #include <HTTPClient.h>
-  #include <HTTPUpdate.h>
-  // #include <WiFi.h>
+  #include <HTTPUpdate.h>  
 #elif defined (ESP8266)
   #include <ESP8266HTTPClient.h>
-  #include <ESP8266httpUpdate.h>
-  // #include <ESP8266WiFi.h>
+  #include <ESP8266httpUpdate.h>  
 #else 
   #error "For ESP boards only"
 #endif

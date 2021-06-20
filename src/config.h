@@ -19,16 +19,18 @@ static void cfgBegin() {
 
 // These are the configirable parameters for the ESP
    
-    #ifndef STASSID        
+    #ifndef _STASSID_
+    #define _STASSID_      
         #define esp_mode WIFI_STA     //WIFI_STA=1, WIFI_AP=2 or WIFI_AP_STA=3           
         #define DHTTYPE DHT11      
         // const int DHTTYPE = 11;  
         static const int DHTPIN = 2;
         #define conRetry config.wirelesscfg.connRetries
         static int wsport = 90;
-    #endif
+    #endif //_STASSID_
 
-    #ifndef LOADMOD
+    #ifndef _LOADMOD_
+    #define _LOADMOD_
         #define doOTA config.sensorscfg.OTA
         #define doOTApull true
         #define snsTemp config.sensorscfg.Temperature
@@ -41,7 +43,13 @@ static void cfgBegin() {
         #define snsWater config.sensorscfg.Water
         #define doMQTT config.sensorscfg.MQTT
         #define doWebSvr config.sensorscfg.WebSvr
-    #endif //LOADMOD
+    #endif //_LOADMOD_
+
+    #ifndef _PROGSTATS_
+    #define _PROGSTATS_
+
+    #endif //_PROGSTATS_
+
 
     // static const char* ssid = config.wirelesscfg.ssid;
     // static const char* password = config.wirelesscfg.psk;

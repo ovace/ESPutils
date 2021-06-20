@@ -30,8 +30,9 @@ ESP8266WebServer server(wsport);
 espSwitch myswitch;
 espTime mytime;
 espRelay myrelay;
+espWebSrv espwebsvr;
 
-SwitchData myswitchdata;
+// SwitchData myswitchdata;
 // progStats myprogstats;
 
 espWebSrv::espWebSrv() { //Class constructor
@@ -48,7 +49,7 @@ void espWebSrv::setupWebSvr(const int port) {
   // espWebSrv::initWebSvr(port);
   server.begin();
   Serial.printf("starting HTTP Serer on port: %i, %i \n", wsport, port);
-  espWebSrv::restRouter();
+  espwebsvr.restRouter();
 };
 
 void espWebSrv::restRouter(){
@@ -65,7 +66,7 @@ void espWebSrv::restRouter(){
     server.send(200, "text/plain", "this works as well");
   });
 
-  server.onNotFound(handleNotFound);
+  server.onNotFound(espWebSrv::handleNotFound);
 
 };
 
@@ -83,12 +84,10 @@ int espWebSrv::getWSPort() {
   return config.websvrcfg.port;
 };
 
-
 void espWebSrv::handleRoot() {
   String s = String(index_html); //Read HTML contents
   server.send(200, "text/html", s); 
   Serial.println("Webpage request received");
-  //server.send(200, "text/html", "get Temperature \n get humidity \n");
 };
 
 void espWebSrv::handleNotFound() {
@@ -163,11 +162,7 @@ void espSwitch::handleSwitchOps() {//Handler
 
   message = "Switch Operation Argument not found";
 
-  }else{     //Parameter found
-
-    // message = "Switch Argument = ";
-    // message += server.arg("Switch");     //Gets the value of the query parameter
-
+  }else{     //Parameter found 
     String op = server.arg("Switch");
     bool SW_State;
 

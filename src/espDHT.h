@@ -32,7 +32,7 @@
             static sensorReady sensorlatency(unsigned long previousMillis, int dly);   
             
         private:
-            static void initDHT() ;    
-            static int getMinimumSamplingPeriod() { return DHTTYPE != DHT11 ? 1000 : 2000; };    
+            void initDHT() ;    
+            int getMinimumSamplingPeriod() { return DHTTYPE != DHT11 ? 1000 : 2000; };    
     };    
 #endif

@@ -5,6 +5,8 @@
 #include "espEmail.h"
 #include "config.h"
 
+espEmail espemail;
+
 String        error_message = "";
 String        Response;
 
@@ -14,7 +16,8 @@ String To, Subject, Message, Login_base64, Passwrd_base64;
 WiFiClientSecure client;
 
 espEmail::espEmail() { //Class constructor
-
+};
+espEmail::~espEmail() { //Class distructor
 };
 
 void espEmail::setup() {
@@ -33,22 +36,22 @@ void espEmail::SendMail(String From, String To, String Subject, String Message) 
     error_message = "SMTP could not connect to the mail server";
     return;
   }
-  if (espEmail::ErrorWhileWaitingForSMTP_Response("220", 500)) {
+  if (espemail.ErrorWhileWaitingForSMTP_Response("220", 500)) {
     error_message = "SMTP Connection Error";
     return;
   }
   client.println("HELO server");
-  if (espEmail::ErrorWhileWaitingForSMTP_Response("250", 500)) {
+  if (espemail.ErrorWhileWaitingForSMTP_Response("250", 500)) {
     error_message = "SMTP Identification error";
     return;
   }
   client.println("AUTH LOGIN");
-  espEmail::WaitSMTPResponse(Response, 500);
+  espemail.WaitSMTPResponse(Response, 500);
   client.println(base64::encode(Senders_Login));
   
   client.println(base64::encode(Senders_Password));
 
-  if (espEmail::ErrorWhileWaitingForSMTP_Response("235", 500)) {
+  if (espemail.ErrorWhileWaitingForSMTP_Response("235", 500)) {
     error_message = "SMTP Authorisation error";
     return;
   }
@@ -59,14 +62,14 @@ void espEmail::SendMail(String From, String To, String Subject, String Message) 
   
   String mailFrom = "MAIL FROM: <" + From + '>';
   client.println(mailFrom);
-  espEmail::WaitSMTPResponse(Response, 500);
+  espemail.WaitSMTPResponse(Response, 500);
   
   String recipient = "RCPT TO: <" + To + '>';
   client.println(recipient);
-  espEmail::WaitSMTPResponse(Response, 500);
+  espemail.WaitSMTPResponse(Response, 500);
   client.println("DATA");
   
-  if (espEmail::ErrorWhileWaitingForSMTP_Response("354", 500)) {
+  if (espemail.ErrorWhileWaitingForSMTP_Response("354", 500)) {
     error_message = "SMTP DATA error";
     return;
   }
@@ -84,13 +87,13 @@ void espEmail::SendMail(String From, String To, String Subject, String Message) 
   client.println(body);
   client.println(".");
   
-  if (espEmail::ErrorWhileWaitingForSMTP_Response("250", 1000)) {
+  if (espemail.ErrorWhileWaitingForSMTP_Response("250", 1000)) {
     error_message = "SMTP Message error";
     return;
   }
   
   client.println("QUIT");
-  if (espEmail::ErrorWhileWaitingForSMTP_Response("221", 1000)) {
+  if (espemail.ErrorWhileWaitingForSMTP_Response("221", 1000)) {
     error_message = "SMTP QUIT error";
     return;
   }
