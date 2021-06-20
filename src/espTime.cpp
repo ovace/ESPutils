@@ -145,7 +145,7 @@ bool espTime::getNTPtime(int sec) {
       localtime_r(&now, &timeinfo);
       
       if (_DEBUG_){
-        Serial.println("getNTPtime debug start")
+        Serial.println("getNTPtime debug start");
         Serial.println(now);
         Serial.println(millis());
         Serial.println(start);
@@ -153,7 +153,7 @@ bool espTime::getNTPtime(int sec) {
         Serial.println(timeinfo.tm_year);
         Serial.println(millis() - start);
         Serial.println(2016 - 1900);
-        Serial.println("getNTPtime debug End***")
+        Serial.println("getNTPtime debug End***");
       };
       
       Serial.print(">");
