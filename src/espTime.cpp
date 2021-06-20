@@ -105,7 +105,7 @@ String espTime::getCurTimestamp () {
   esptime.setup();
   //Update time  
   time(&now);                       // read the current time
-  localtime_r(&now, &timeinfo);     // update the structure tm with the current time
+  localtime_r(&now, timeinfo);     // update the structure tm with the current time
 
   int currentHour = timeinfo -> tm_hour;  
   int currentMinute = timeinfo -> tm_min;     
@@ -171,7 +171,7 @@ void espTime::showTime(tm *localTime) {
     localTime -> tm_hour,
     localTime -> tm_min,
     localTime -> tm_sec,
-    (localTime -> tm_wday > 0 ? localTime.tm_wday : 7 ),
+    (localTime -> tm_wday > 0 ? localTime -> tm_wday : 7 ),
     (localTime -> tm_isdst == 1 ? "summer" : "standard")
   );
 }
@@ -182,7 +182,7 @@ bool espTime::getNTPtime(int sec) {
     char time_output[30];
     do {
       time(&now);
-      localtime_r(&now, &timeinfo);
+      localtime_r(&now, timeinfo);
       
       if (_DEBUG_){
         Serial.println("getNTPtime debug start");
