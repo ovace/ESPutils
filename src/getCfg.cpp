@@ -118,8 +118,9 @@ void espCFG::loadConfiguration(const char *filename, GlobalConfig &config) {
 
     //NTP
     // strlcpy(config.ntpcfg.Server, doc["NTP"]["Server"] | "pool.ntp.org", sizeof(config.ntpcfg.Server));
-    config.ntpcfg.Server = doc["NTP"]["Server"] | "pool.ntp.org";
+    config.ntpcfg.Server = doc["NTP"]["Server"] | "time.nist.gov";
     config.ntpcfg.refrehFreq = doc["NTP"]["refrehFreq"] |  6000; 
+    config.ntpcfg.timeZone = doc["NTP"]["timezone"] |  'UTC0"'; 
 
     //WebSvr
     config.websvrcfg.port = doc["WebSvr"]["port"] |  80; 

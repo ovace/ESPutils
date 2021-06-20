@@ -57,6 +57,7 @@ struct GlobalConfig {
   struct NTPcfg{
       String Server;
       int refrehFreq;
+      char timezone;
     };
     NTPcfg ntpcfg;
 
