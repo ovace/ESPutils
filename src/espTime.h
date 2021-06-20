@@ -14,10 +14,13 @@
             static String getCurTimestamp(); 
             static String getCurDate();
             static void setClock();   
-            // static void espTime::showTime(); 
             static void showTime(tm localTime);
-        //private:
+            static void getEpoch();
+            static void getTimeData();
+            static void example();
+        private:
             void setup();
+            void getNTP();
             bool getNTPtime(int sec);
     };
 #endif
