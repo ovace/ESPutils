@@ -94,7 +94,8 @@ void espTime::setup() {
   //   Serial.println("Time not set");
   //   ESP.restart();
   // };
-  showTime(timeinfo);
+
+  // showTime(timeinfo);
   lastNTPtime = time(&now);
   lastEntryTime = millis();
 
@@ -221,10 +222,16 @@ void espTime::getNTP()
   Epoch = now;
 };
 
-void espTime::getEpoch()  // writes the Epoch (Numbers of seconds till 1.1.1970..
+void espTime::getEpoch()  // writes the Epoch (Numbers of seconds till 1.1.1970.
 {
   now = time(nullptr);
   Epoch = now;
+
+  if (_DEBUG_) {
+    Serial.println("Start debug -> espTime::getEpoch")
+    esptime.example();
+    Serial.println("**Start debug -> espTime::getEpoch**")
+  }; // end _DEBUG_
 };
 
 void espTime::getTimeData() // breaks down the Epoch into discrete values.
@@ -241,15 +248,21 @@ void espTime::getTimeData() // breaks down the Epoch into discrete values.
   strftime (MonthName, 12, "%B", timeinfo);
   strftime (Time,10, "%T", timeinfo);
   strftime (Date,12, "%d/%m/%Y", timeinfo);
+
+  if (_DEBUG_) {
+    Serial.println("Start debug -> espTime::getTimeData")
+    esptime.example();
+    Serial.println("**Start debug -> espTime::getTimeData**")
+  }; // end _DEBUG_
 };
 
 void espTime::example()
 {
-  getEpoch();            
-  getTimeData();         
+  // esptime.getEpoch();            
+  // esptime.getTimeData();         
 
   // Examples with Strings
-  Serial.print(F("Thanks God, it is: "));   Serial.print( DayName );
+  Serial.print(F("It is: "));   Serial.print( DayName );
   Serial.print(F("! Date is "));   Serial.print( Date );
   Serial.print(F(" and Time is "));   Serial.println( Time );
 
