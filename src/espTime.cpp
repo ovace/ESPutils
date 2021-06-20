@@ -103,7 +103,7 @@ void espTime::NTPstart() {
 
 String espTime::getCurTimestamp () {
   // initialize NTPClient
-  esptime.setup();
+  esptime.NTPstart();
   //Update time  
   time(&now);                       // read the current time
   localtime_r(&now, timeinfo);     // update the structure tm with the current time
@@ -120,7 +120,7 @@ String espTime::getCurTimestamp () {
 
 String espTime::getCurDate () {
   // initialize NTPClient
-  esptime.setup();
+  esptime.NTPstart();
  
   time(&now);                       // read the current time
   localtime_r(&now, timeinfo);     // update the structure tm with the current time
