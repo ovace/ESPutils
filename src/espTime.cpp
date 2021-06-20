@@ -49,12 +49,12 @@ void espTime::setup() {
   // setenv("TZ", MY_TZ, 1);  //not avalable in windows
   // putenv("TZ=" MY_TZ);  // if not included, localtime = gmtime
 
-  Serial.println(esptime.getNTPtime(10));
-  // if (esptime.getNTPtime(10)) {  // wait up to 10sec to sync
-  // } else {
+  // Serial.println(esptime.getNTPtime(10));
+  if (esptime.getNTPtime(10)) {  // wait up to 10sec to sync
+  } else {
     Serial.println("Time not set");
     ESP.restart();
-  // }
+  };
   showTime(timeinfo);
   lastNTPtime = time(&now);
   lastEntryTime = millis();
@@ -143,6 +143,17 @@ bool espTime::getNTPtime(int sec) {
     do {
       time(&now);
       localtime_r(&now, &timeinfo);
+      
+      if (_DEBUG_){
+        Serial.println(now);
+        Serial.println(millis());
+        Serial.println(start);
+        Serial.printf("sec %i \n",sec);
+        Serial.println(timeinfo.tm_year);
+        Serial.println(millis() - start);
+        Serial.println(2016 - 1900);
+      };
+      
       Serial.print(".");
       delay(10);
     } while (((millis() - start) <= (1000 * sec))
