@@ -228,9 +228,9 @@ void espTime::getEpoch()  // writes the Epoch (Numbers of seconds till 1.1.1970.
   Epoch = now;
 
   if (_DEBUG_) {
-    Serial.println("Start debug -> espTime::getEpoch")
+    Serial.println("Start debug -> espTime::getEpoch");
     esptime.example();
-    Serial.println("**Start debug -> espTime::getEpoch**")
+    Serial.println("**Start debug -> espTime::getEpoch**");
   }; // end _DEBUG_
 };
 
@@ -250,9 +250,9 @@ void espTime::getTimeData() // breaks down the Epoch into discrete values.
   strftime (Date,12, "%d/%m/%Y", timeinfo);
 
   if (_DEBUG_) {
-    Serial.println("Start debug -> espTime::getTimeData")
+    Serial.println("Start debug -> espTime::getTimeData");
     esptime.example();
-    Serial.println("**Start debug -> espTime::getTimeData**")
+    Serial.println("**Start debug -> espTime::getTimeData**");
   }; // end _DEBUG_
 };
 
