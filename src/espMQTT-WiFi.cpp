@@ -11,7 +11,7 @@
   #error Invalid platform
 #endif 
 
-// #include <Ticker.h>
+#include <Ticker.h>
 #include <AsyncMqttClient.h>
 
 #include "config.h"
