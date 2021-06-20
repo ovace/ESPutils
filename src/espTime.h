@@ -14,7 +14,7 @@
             static String getCurTimestamp(); 
             static String getCurDate();
             static void setClock();   
-            static void showTime(tm localTime);
+            static void showTime(tm *localTime);
             static void getEpoch();
             static void getTimeData();
             static void example();

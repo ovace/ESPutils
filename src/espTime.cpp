@@ -107,9 +107,9 @@ String espTime::getCurTimestamp () {
   time(&now);                       // read the current time
   localtime_r(&now, &timeinfo);     // update the structure tm with the current time
 
-  int currentHour = timeinfo.tm_hour;  
-  int currentMinute = timeinfo.tm_min;     
-  int currentSecond = timeinfo.tm_sec;
+  int currentHour = timeinfo -> tm_hour;  
+  int currentMinute = timeinfo -> tm_min;     
+  int currentSecond = timeinfo -> tm_sec;
   
   String curTimeStamp = String(currentHour) + ":" + String(currentMinute) +  ":" + String(currentSecond);
 
@@ -122,7 +122,7 @@ String espTime::getCurDate () {
   esptime.setup();
  
   time(&now);                       // read the current time
-  localtime_r(&now, &timeinfo);     // update the structure tm with the current time
+  localtime_r(&now, timeinfo);     // update the structure tm with the current time
 
   //Get a time structure
   int monthDay = timeinfo -> tm_mday;  
