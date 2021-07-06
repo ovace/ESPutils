@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 #include <string.h>
+#include <time.h>           // time() ctime()
 
 //**Do not*** include other fancy Time libraries! Everything is on board from Espressif.
 #if defined(ESP8266)
@@ -11,8 +12,7 @@
   #include <WiFiUdp.h>      // default from Espressif 
   #include <TZ.h>           // default from Espressif
 #elif defined(ESP32)
-// #include <WiFi.h>         // defaults from Espressif
-  #include <time.h>           // time() ctime()
+// #include <WiFi.h>         // defaults from Espressif  
 #endif
 
 #include "espTime.h"
@@ -78,7 +78,7 @@ espTime::~espTime() { //Class destructor
 
 void espTime::NTPstart() {
 
-    esptime.getNTP();
+    if (esptime.getNTP()) {
 
   // configTime(MY_TZ, NTP_SERVER1, NTP_SERVER2); // --> Here is the IMPORTANT ONE LINER needed in your sketch!  
 
@@ -98,6 +98,9 @@ void espTime::NTPstart() {
   // showTime(timeinfo);
   lastNTPtime = time(&now);
   lastEntryTime = millis();
+  }  else {
+    Serial. println("Can not get time from source");
+  }
 
 };
 
@@ -136,31 +139,31 @@ String espTime::getCurDate () {
   return currentDate;
 }
 
-/* 
+
 void espTime::showTime() {
   time(&now);                       // read the current time
-  localtime_r(&now, &tm);           // update the structure tm with the current time
+  localtime_r(&now, timeinfo);           // update the structure tm with the current time
   Serial.print("year:");
-  Serial.print(tm.tm_year + 1900);  // years since 1900
+  Serial.print(timeinfo -> tm_year + 1900);  // years since 1900
   Serial.print("\tmonth:");
-  Serial.print(tm.tm_mon + 1);      // January = 0 (!)
+  Serial.print(timeinfo ->tm_mon + 1);      // January = 0 (!)
   Serial.print("\tday:");
-  Serial.print(tm.tm_mday);         // day of month
+  Serial.print(timeinfo -> tm_mday);         // day of month
   Serial.print("\thour:");
-  Serial.print(tm.tm_hour);         // hours since midnight  0-23
+  Serial.print(timeinfo -> tm_hour);         // hours since midnight  0-23
   Serial.print("\tmin:");
-  Serial.print(tm.tm_min);          // minutes after the hour  0-59
+  Serial.print(timeinfo -> tm_min);          // minutes after the hour  0-59
   Serial.print("\tsec:");
-  Serial.print(tm.tm_sec);          // seconds after the minute  0-61*
+  Serial.print(timeinfo -> tm_sec);          // seconds after the minute  0-61*
   Serial.print("\twday");
-  Serial.print(tm.tm_wday);         // days since Sunday 0-6
-  if (tm.tm_isdst == 1)             // Daylight Saving Time flag
+  Serial.print(timeinfo -> tm_wday);         // days since Sunday 0-6
+  if (timeinfo -> tm_isdst == 1)             // Daylight Saving Time flag
     Serial.print("\tDST");
   else
     Serial.print("\tstandard");
   Serial.println();
 } 
-*/
+
 
  // Shorter way of displaying the time
 void espTime::showTime(tm *localTime) {
@@ -211,15 +214,23 @@ bool espTime::getNTPtime(int sec) {
   return true;
 }
 
-void espTime::getNTP()
+boolean espTime::getNTP()
 {
 #if defined(ESP8266)
   configTime(MY_TZ, NTP_SERVER1, NTP_SERVER2);
 #elif defined(ESP32)
   configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER1, NTP_SERVER2);
 #endif
+
+if (!getLocalTime(timeinfo, 10000)) {
+    Serial.println("Failed to obtain time");
+    return(0);
+  }
+  time(&now);
   now = time(nullptr);
   Epoch = now;
+  return now;
+  
 };
 
 void espTime::getEpoch()  // writes the Epoch (Numbers of seconds till 1.1.1970.

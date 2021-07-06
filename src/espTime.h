@@ -15,12 +15,13 @@
             static String getCurTimestamp(); 
             static String getCurDate();
             static void setClock();   
+            static void showTime();
             static void showTime(tm *localTime);
             static void getEpoch();
             static void getTimeData();
             static void example();
         private:            
-            void getNTP();
+            boolean getNTP();
             bool getNTPtime(int sec);
     };
 #endif
