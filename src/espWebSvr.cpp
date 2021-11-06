@@ -7,6 +7,8 @@
 #include <ArduinoJson.h>
 #include <string>
 
+#include "LittleFS.h" // LittleFS is declared
+
 #if defined(ESP8266)  
   #include <ESP8266WebServer.h>  
 #elif defined(ESP32)  
@@ -15,22 +17,22 @@
   #error Invalid platform
 #endif 
 
-// #include <Ticker.h>
-
 #include "index.html"  //include the index.html page
-#include "config.h"
-#include "getCfg.h"
 #include "espWebSvr.h"
+espWebSrv myWebSvr;
+espWebSvrCfg myWebSvrCfg;
 #include "espTime.h"
-#include "espRelay.h"
+espTime myTime;
+
+WebSvrConfig *websvrcfg, mywebsvrcfg;
+
+static const char* cfgFilename = "/espWebSvrConfig.json";  
+
+#define _DEBUG_ mywebsvrcfg.debug
 
 //Initialize Webserver
-ESP8266WebServer server(wsport);
-
-espSwitch myswitch;
-espTime mytime;
-espRelay myrelay;
-espWebSrv espwebsvr;
+// ESP8266WebServer server(wsport);
+ESP8266WebServer server(90);
 
 // SwitchData myswitchdata;
 // progStats myprogstats;
@@ -39,29 +41,26 @@ espWebSrv::espWebSrv() { //Class constructor
 };
 espWebSrv::~espWebSrv() { //Class destructor
 };
+void espWebSrv::setup(const int port) {
+  // read configuraton file
+  myWebSvrCfg.loadConfiguration();
+  if (_DEBUG_) {
+  Serial.println("Configuration JSON File");
+    myWebSvrCfg.printFile();
 
-espSwitch::espSwitch() { //Class constructor
-};
-espSwitch::~espSwitch() { //Class destructor
-};
+    Serial.println("Configuration: ");
+    myWebSvrCfg.printCFG();
+  }
 
-void espWebSrv::setupWebSvr(const int port) {
-  // espWebSrv::initWebSvr(port);
+  // espWebSrv::initWebSvr(port);  
+  // Serial.printf("starting HTTP Serer on port: %i, %i \n", wsport, port);
+  Serial.printf("starting HTTP Serer on port:  %i ",  port); Serial.println();
   server.begin();
-  Serial.printf("starting HTTP Serer on port: %i, %i \n", wsport, port);
-  espwebsvr.restRouter();
+  myWebSvr.restRouter();
 };
-
 void espWebSrv::restRouter(){
    server.on("/", HTTP_GET, espWebSrv::handleRoot);        // Call the 'handleRoot' function when a client requests URI "/"
-  
-  server.on("/Switch-ON", HTTP_GET, espSwitch::handleSwitchON);   
-  server.on("/Switch-OFF", HTTP_GET, espSwitch::handleSwitchOFF);
-  server.on("/"+config.devicecfg.name, HTTP_GET, espSwitch::handleSwitchOps);   //Tuen switch ON or OFF based on Parameters
-
-  server.on("/genericArgs", HTTP_GET, espSwitch::handleGenericArgs);    //Associate the handler function to the path
-  server.on("/specificArgs", HTTP_GET, espSwitch::handleSpecificArg);   //Associate the handler function to the path
-    
+ 
   server.on("/inline", [](){
     server.send(200, "text/plain", "this works as well");
   });
@@ -69,27 +68,22 @@ void espWebSrv::restRouter(){
   server.onNotFound(espWebSrv::handleNotFound);
 
 };
-
 void espWebSrv::initWebSvr(const int port) {
   // //Initialize Webserver
   // ::ESP8266WebServer server(port);
 };
-
-void espWebSrv::WSStatus() {
+void espWebSrv::status() {
 
 };
-
 int espWebSrv::getWSPort() {
-  Serial.printf("Ws Port: %i \n", config.websvrcfg.port );
-  return config.websvrcfg.port;
+  Serial.printf("Ws Port: %i \n", mywebsvrcfg.websvrcfg.port );
+  return mywebsvrcfg.websvrcfg.port;
 };
-
 void espWebSrv::handleRoot() {
   String s = String(index_html); //Read HTML contents
   server.send(200, "text/html", s); 
   Serial.println("Webpage request received");
 };
-
 void espWebSrv::handleNotFound() {
   String message = "File Not Found\n\n";
   message += "URI: ";
@@ -104,91 +98,150 @@ void espWebSrv::handleNotFound() {
   };
   server.send(404, "text/plain", message);  
 };
-
 void espWebSrv::handleClient(){
   server.handleClient();
 };
 
-void espSwitch::handleSwitchOFF() {  
-  bool SW_State = myrelay.relayOpen();
-  server.send(200, "text/plain", String(SW_State));
+espWebSvrCfg::espWebSvrCfg() { //Class constructor
+ 
 };
+espWebSvrCfg::~espWebSvrCfg() { //Class destructor
 
-void espSwitch::handleSwitchON() {  
-  bool SW_State = myrelay.relayClose();
-  server.send(200, "text/plain", String(SW_State));
-    
 };
+void espWebSvrCfg::loadConfiguration(const char *cfgFilename, WebSvrConfig &mywebsvrcfg){
+//mounts file system.
+  LittleFS.begin();
 
-void espSwitch::handleGenericArgs() {//Handler
+  FSInfo fs_info;
+  LittleFS.info(fs_info);
+    Serial.print(F("Total Bytes: "));Serial.println( fs_info.totalBytes);
+    Serial.print(F("used Bytes: "));Serial.println(fs_info.usedBytes);
+    Serial.print(F("Block Size: "));Serial.println(fs_info.blockSize);
+    Serial.print(F("Page Size: "));Serial.println(fs_info.pageSize);
+    Serial.print(F("max open files: "));Serial.println(fs_info.maxOpenFiles);
+    Serial.print(F("max path lengt: "));Serial.println(fs_info.maxPathLength);
+  // Open file for reading
+  if (LittleFS.exists(cfgFilename)) {
 
-String message = "Number of args received:";
-message += server.args();            //Get number of parameters
-message += "\n";                            //Add a new line
+    File file = LittleFS.open(cfgFilename, "r");
+    Serial.print(F("Opening mywebsvrcfg file: "));
+    Serial.println(cfgFilename);
+    if (!file) {
+      Serial.print(F("Failed to read file")); Serial.println(cfgFilename); 
+      return;
+      };
 
-for (int i = 0; i < server.args(); i++) {
+    const int capacity =   JSON_OBJECT_SIZE(1) + 
+                           JSON_OBJECT_SIZE(2) +
+                           100;
+    Serial.print("JsonBufferCapacity: "); Serial.println(capacity);
+    StaticJsonDocument<capacity> doc;
 
-message += "Arg nº" + (String)i + " –> ";   //Include the current iteration value
-message += server.argName(i) + ": ";     //Get the name of the parameter
-message += server.arg(i) + "\n";              //Get the value of the parameter
+    // StaticJsonDocument<300> doc;
 
-} 
-
-server.send(200, "text/plain", message);       //Response to the HTTP request
-
-}
-
-void espSwitch::handleSpecificArg() {//Handler
-  String message = "";
-
-  if (server.arg("Switch")== ""){     //Parameter not found
-
-  message = "Switch Operation Argument not found";
-
-  }else{     //Parameter found
-
-  message = "Switch Argument = ";
-  message += server.arg("Switch");     //Gets the value of the query parameter
-
-  }
-
-  server.send(200, "text/plain", message);          //Returns the HTTP response
-}
-
-void espSwitch::handleSwitchOps() {//Handler
-  String message = "";
-
-  if (server.arg("Switch")== ""){     //Parameter not found
-
-  message = "Switch Operation Argument not found";
-
-  }else{     //Parameter found 
-    String op = server.arg("Switch");
-    bool SW_State;
-
-    if (op == "ON") {
-      bool SW_State = myrelay.relayClose(); //Turn Switch ON
-      message = SW_State;
-    } else if (op == "OFF") {
-      bool SW_State = myrelay.relayOpen(); //Turn Switch OFF
-      message = SW_State;
-    } else  {
-      message = "Only ON and OFF operations allowed";
+    // Deserialize the JSON document
+    DeserializationError error = deserializeJson(doc, file);
+    if (error) {  
+      Serial.print(F("Failed to read file, using default configuration"));
+      Serial.println(error.f_str());
+      return;
     };
-  // Does not work as in C++ switch can only use integers, not string
-  //   switch("op") {
-  //     case "ON" :
-  //        SW_State = myrelay.relayClose(); //Turn Switch ON
-  //        message = SW_State;
-  //        break;      
-  //     case "OFF" :
-  //        SW_State = myrelay.relayOpen(); //Turn Switch OFF
-  //        message = SW_State;
-  //        break;
-  //     default :
-  //        message = "Only ON and OFF operations allowed";
-  //   }
+    // Copy values from the JsonDocument to the myadccfg
+
+    //Release
+    mywebsvrcfg.cfg_rel = doc["release"] | 99.99;
+    mywebsvrcfg.debug = doc["debug"] | false;
+
+    //WebSvr
+    mywebsvrcfg.websvrcfg.port = doc["WebSvr"]["port"] |  80; 
+    
+    file.close(); // Close the file (Curiously, File's destructor doesn't close the file)
+  } else {
+    Serial.print(F("Failed not found: ")); Serial.println(cfgFilename); 
+    return;
+  };  
+  Serial.println("done processing JSON");  
+
+  LittleFS.end(); //unmounts file system.
+  return;
+};
+void espWebSvrCfg::loadConfiguration(){
+  myWebSvrCfg.loadConfiguration(cfgFilename, mywebsvrcfg);
+};
+void espWebSvrCfg::saveConfiguration(const char *cfgFilename, const WebSvrConfig &mywebsvrcfg) {
+  //mounts file system.
+  LittleFS.begin();
+  // Delete existing file, otherwise the configuration is appended to the file
+  LittleFS.remove(cfgFilename);
+
+  // Open file for writing
+  File file = LittleFS.open(cfgFilename, "r+");
+  if (!file) {
+    Serial.println(F("Failed to create file"));
+    return;
   }
 
-  server.send(200, "text/plain", message);          //Returns the HTTP response
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use arduinojson.org/assistant to compute the capacity.
+  StaticJsonDocument<256> doc;
+
+
+  // Serialize JSON to file
+  if (serializeJson(doc, file) == 0) {
+    Serial.println(F("Failed to write to file"));
+  }
+
+  // Close the file
+  file.close();
+
+  //unmounts file system.
+  LittleFS.end();
 };
+void espWebSvrCfg::saveConfiguration(){
+  myWebSvrCfg.saveConfiguration(cfgFilename, mywebsvrcfg);
+};
+void espWebSvrCfg::printFile(const char *cfgFilename){
+  //mounts file system.
+  LittleFS.begin();
+
+  FSInfo fs_info;
+  LittleFS.info(fs_info);
+
+  Serial.println( fs_info.totalBytes);
+  Serial.println(fs_info.usedBytes);
+  Serial.println(fs_info.blockSize);
+  Serial.println(fs_info.pageSize);
+  Serial.println(fs_info.maxOpenFiles);
+  Serial.println(fs_info.maxPathLength);
+
+  // Open file for reading
+  File file = LittleFS.open(cfgFilename, "r");
+  if (!file) {
+    Serial.println(F("Failed to read file"));
+    return;
+  }
+
+  // Extract each characters by one by one
+  while (file.available()) {
+    Serial.print((char)file.read());
+  }
+  Serial.println();
+
+  // Close the file
+  file.close();
+
+  //unmounts file system.
+  LittleFS.end();
+};
+void espWebSvrCfg::printFile(){
+  myWebSvrCfg.printFile(cfgFilename);
+};
+void espWebSvrCfg::printCFG(){
+  Serial.printf("Release: %f ",mywebsvrcfg.cfg_rel);Serial.println();
+  Serial.printf("Debug mode: %s ", mywebsvrcfg.debug? "true"  : "false");Serial.println();
+  
+  Serial.println(F("WebServer Config"));
+  Serial.println(mywebsvrcfg.websvrcfg.port);
+};
+

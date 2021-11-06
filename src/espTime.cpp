@@ -16,8 +16,6 @@
 #endif
 
 #include "espTime.h"
-#include "getCfg.h"
-
 espTime esptime;
 
 /* Globals */
@@ -44,6 +42,7 @@ unsigned long lastEntryTime;
 // #define MY_TZ 	"CST6CDT,M3.2.0,M11.1.0"  // see https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv for Timezone codes for your region
 #define MY_TZ 	"UTC0"  // UTC Etc/Universal	
 
+#define _DEBUG_ true
 
 int Second;
 int Minute;
@@ -70,12 +69,10 @@ char charbuff[80];    // Char buffer for many functions
 // NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 
-
 espTime::espTime() { //Class constructor
 };
 espTime::~espTime() { //Class destructor
 };
-
 void espTime::NTPstart() {
 
     if (esptime.getNTP()) {
@@ -103,7 +100,6 @@ void espTime::NTPstart() {
   }
 
 };
-
 String espTime::getCurTimestamp () {
   // initialize NTPClient
   esptime.NTPstart();
@@ -120,7 +116,6 @@ String espTime::getCurTimestamp () {
   return curTimeStamp;
 
   }
-
 String espTime::getCurDate () {
   // initialize NTPClient
   esptime.NTPstart();
@@ -138,8 +133,6 @@ String espTime::getCurDate () {
   
   return currentDate;
 }
-
-
 void espTime::showTime() {
   time(&now);                       // read the current time
   localtime_r(&now, timeinfo);           // update the structure tm with the current time
@@ -163,8 +156,6 @@ void espTime::showTime() {
     Serial.print("\tstandard");
   Serial.println();
 } 
-
-
  // Shorter way of displaying the time
 void espTime::showTime(tm *localTime) {
   Serial.printf(
@@ -179,10 +170,10 @@ void espTime::showTime(tm *localTime) {
     (localTime -> tm_isdst == 1 ? "summer" : "standard")
   );
 }
-
 bool espTime::getNTPtime(int sec) {
   
-    uint32_t start = millis();
+    // uint32_t start = millis();
+    unsigned long start = millis();
     char time_output[30];
     do {
       time(&now);
@@ -204,7 +195,7 @@ bool espTime::getNTPtime(int sec) {
       
       Serial.print(">");
       delay(10);
-    } while (((millis() - start) <= (1000 * sec))
+    } while (((millis() - start) <= (unsigned long)(1000 * sec))
        && (timeinfo -> tm_year < (2016 - 1900))
       );
     if (timeinfo -> tm_year <= (2016 - 1900)) {
@@ -213,7 +204,6 @@ bool espTime::getNTPtime(int sec) {
      
   return true;
 }
-
 boolean espTime::getNTP()
 {
 #if defined(ESP8266)
@@ -229,11 +219,10 @@ boolean espTime::getNTP()
 //   time(&now);
 //   now = time(nullptr);
 //   Epoch = now;
-  // return now;
-  return true;
+//   return now;
+return true;
   
 };
-
 void espTime::getEpoch()  // writes the Epoch (Numbers of seconds till 1.1.1970.
 {
   now = time(nullptr);
@@ -245,7 +234,6 @@ void espTime::getEpoch()  // writes the Epoch (Numbers of seconds till 1.1.1970.
     Serial.println("**Start debug -> espTime::getEpoch**");
   }; // end _DEBUG_
 };
-
 void espTime::getTimeData() // breaks down the Epoch into discrete values.
 {
   timeinfo  = localtime(&now);  // cf: https://www.cplusplus.com/reference/ctime/localtime/
@@ -267,7 +255,6 @@ void espTime::getTimeData() // breaks down the Epoch into discrete values.
     Serial.println("**Start debug -> espTime::getTimeData**");
   }; // end _DEBUG_
 };
-
 void espTime::example()
 {
   // esptime.getEpoch();            
@@ -279,7 +266,7 @@ void espTime::example()
   Serial.print(F(" and Time is "));   Serial.println( Time );
 
   // Examples with a character buffer (can be used for displays as well)
-  sprintf(charbuff, "Now is %02d Hour, %02d Minutes and %02d Seconds. The Epoch is: %10lu" , Hour , Minute, Second, Epoch);
+  sprintf(charbuff, "Now is %02d Hour, %02d Minutes and %02d Seconds. The Epoch is: %10lli" , Hour , Minute, Second, Epoch);
   Serial.println(charbuff);
   sprintf(charbuff, "Date is %s, %02d %s %04d ", DayName , Day , MonthName, Year);
   Serial.print(charbuff);

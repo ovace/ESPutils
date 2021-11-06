@@ -21,20 +21,20 @@
 #include "espRelay.h"
 #include "espMQTT-WiFi.h"
 #include "espTime.h"
-// #include "SwitchData.h"  // inclued in header file
 
 static espMQTT mymqtt;
 static espTime mytime;
 static espSend mysend;
-static SwitchData switchdata;
 
 int sendCount = 0;
+
 
 espRelay::espRelay() { //Class constructor
   mycfg.loadConfiguration();
 };
 espRelay::~espRelay() { //Class destructor
 };
+
 espSend::espSend() { //Class constructor
 };
 espSend::~espSend() { //Class destructor
@@ -47,6 +47,7 @@ void espRelay::setupRelay() {
 bool espRelay::RelayStatus() {
   return true;
 };
+
 
 bool espRelay::relayClose() {
   Serial.write("\xa0\x01\x01\xa2"); // CLOSE RELAY 
@@ -68,6 +69,7 @@ bool espRelay::relayOpen() {
 
   return 0;
 };
+
 
 // Send message to MQTT
 bool espSend::sendMsg() { 
@@ -98,7 +100,7 @@ SwitchData espSend::prepData() {
     switchdata.time = mytime.getCurTimestamp();
     
     //Total device uptime since last reset
-    // switchdata.upTime = difftime(time(nullptr), progstats.startTime);
+    switchdata.upTime = difftime(time(nullptr), progstats.startTime);
 
     return switchdata;
   

@@ -1,25 +1,15 @@
-#include <FS.h>
+#include <Arduino.h>
+#include <LittleFS.h> // LittleFS is declared
 #include <ArduinoJson.h>
-
-#if defined(ESP8266)
- #include "LittleFS.h" // myfs is declared
- LITTLEFS myfs = LITTLEFS;
-#elif defined(ESP32)
-  #include "SPIFFS.h"
-  FS myfs = SPIFFS;
-#else
-  #error Invalid platform
-#endif 
-
+#include <string.h>
 
 #include "getCfg.h"
+espCFG myCfg;
+GlobalConfig  config, *cfgP = &config;  // <- global configuration object -- cfg is the pointer 
 
-GlobalConfig *cfg, config;
-// cfg = &config;
+const char *cfgFilename = "/mainConfig.json";  
 
-
-
-const char *filename = "/config.json";  
+#define _DEBUG_ cfgP->debug
 
 espCFG::espCFG() { //Class constructor
 
@@ -27,39 +17,48 @@ espCFG::espCFG() { //Class constructor
 espCFG::~espCFG() { //Class destructor
 
 };
+bool espCFG::setup(){  
+  // read configuraton file
+  myCfg.loadConfiguration();
 
+  if (_DEBUG_) {
+    Serial.printf("Chip ID: %s", String(ESP.getChipId()).c_str()); Serial.println();
+    Serial.printf("Device Vcc: %s", String(ESP.getVcc()).c_str()); Serial.println();
+
+    Serial.print("Configuration JSON File: ");Serial.println(cfgFilename);
+    myCfg.printFile();
+
+    Serial.println("Configuration: ");
+    myCfg.printCFG();
+
+  } 
+
+  return true;
+} 
 
 // Loads the configuration from a file
-void espCFG::loadConfiguration(const char *filename, GlobalConfig &config) {
+GlobalConfig espCFG::loadConfiguration(const char *filename, GlobalConfig &config) {
 
   //mounts file system.
-  #ifdef ESP32
-    Serial.println("\nESP32 Test");
-    SPIFFS.begin(true);
-  #endif
-  #ifdef ESP8266
-    Serial.println("\nESP8266 Test");
-    myfs.begin();
+  LittleFS.begin();
 
-    
-    FSInfo fs_info;
-    myfs.info(fs_info);
-      Serial.println( fs_info.totalBytes);
-      Serial.println(fs_info.usedBytes);
-      Serial.println(fs_info.blockSize);
-      Serial.println(fs_info.pageSize);
-      Serial.println(fs_info.maxOpenFiles);
-      Serial.println(fs_info.maxPathLength);
-  #endif
+  FSInfo fs_info;
+  LittleFS.info(fs_info);
+    Serial.print(F("Total Bytes: "));Serial.println( fs_info.totalBytes);
+    Serial.print(F("used Bytes: "));Serial.println(fs_info.usedBytes);
+    Serial.print(F("Block Size: "));Serial.println(fs_info.blockSize);
+    Serial.print(F("Page Size: "));Serial.println(fs_info.pageSize);
+    Serial.print(F("max open files: "));Serial.println(fs_info.maxOpenFiles);
+    Serial.print(F("max path lengt: "));Serial.println(fs_info.maxPathLength);
 
   // Open file for reading
-  if (myfs.exists(filename)) {
-
-    File file = myfs.open(filename, "r");
-    Serial.println(F("Opening config file"));
+  if (LittleFS.exists(filename)) {
+    Serial.print(F("Opening config file")); ; Serial.println(filename); 
+    File file = LittleFS.open(filename, "r");
+    
     if (!file) {
-      Serial.println(F("file open failed"));
-      return;
+      Serial.print(F("Failed to read file")); Serial.println(filename); 
+      return config;
       };
 
     // Allocate a temporary JsonDocument
@@ -67,172 +66,89 @@ void espCFG::loadConfiguration(const char *filename, GlobalConfig &config) {
     // Use arduinojson.org/v6/assistant to compute the capacity.
     const int capacity = 2*JSON_OBJECT_SIZE(1) + 
                          3*JSON_OBJECT_SIZE(2) + 
-                           JSON_OBJECT_SIZE(4) + 
-                           JSON_OBJECT_SIZE(5) + 
-                           JSON_OBJECT_SIZE(6) + 
-                           JSON_OBJECT_SIZE(7) + 
-                         2*JSON_OBJECT_SIZE(12) +
-                          560 + 250;
+                           JSON_OBJECT_SIZE(4) +                            
+                           JSON_OBJECT_SIZE(13) +
+                           350;
+
+    Serial.print("JsonBufferCapacity: "); Serial.println(capacity);
     StaticJsonDocument<capacity> doc;
-    // SDynamicJsonBuffer Doc<1500>;
-
-    // int jcount = doc.size();
-    // Serial.println(F(jcount));
-
+    
     // Deserialize the JSON document
     DeserializationError error = deserializeJson(doc, file);
     if (error) {  
       Serial.println(F("Failed to read file, using default configuration"));
-      return;
+      return config;
     };
     // Copy values from the JsonDocument to the Config
 
     //Release
-    config.cfg_rel = doc["release"] | 99.99;
-    config.debug = doc["debug"] | false;
+    cfgP->cfg_rel = doc["release"] | 99.99;
+    cfgP->debug = doc["debug"] | true;
 
     //Device
-    // strlcpy(config.devicecfg.name, doc["Device"]["name"] | "", sizeof(config.devicecfg.name));
-    config.devicecfg.name = doc["Device"]["name"] | "";
-    // strlcpy(config.devicecfg.type, doc["Device"]["type"] | "esp", sizeof(config.devicecfg.type));
-    config.devicecfg.type = doc["Device"]["type"] | "esp";
-    // strlcpy(config.devicecfg.model, doc["Device"]["model"] | "esp8266", sizeof(config.devicecfg.model));
-    config.devicecfg.model = doc["Device"]["model"] | "esp8266";
-    // strlcpy(config.devicecfg.location, doc["Device"]["location"] | "home", sizeof(config.devicecfg.location));
-    config.devicecfg.location = doc["Device"]["location"] | "home";
-    config.devicecfg.place = doc["Device"]["place"] | "home";
-    
-    //WiFi
-    // strlcpy(config.wirelesscfg.hostname, doc["Device"]["name"] | "esp", sizeof(config.wirelesscfg.hostname));
-    config.wirelesscfg.hostname = doc["Device"]["name"] | "esp";
-    // strlcpy(config.wirelesscfg.hostname, doc["WiFi"]["hostname"] | "esp", sizeof(config.wirelesscfg.hostname));
-    config.wirelesscfg.port =  doc["WiFi"]["port"] | 2731;
-    // strlcpy(config.wirelesscfg.ssid, doc["WiFi"]["ssid"] | "", sizeof(config.wirelesscfg.ssid));
-    config.wirelesscfg.ssid = doc["WiFi"]["ssid"] | "";
-    strlcpy(config.wirelesscfg.psk,  doc["WiFi"]["psk"] | "", sizeof(config.wirelesscfg.psk));
-    // config.wirelesscfg.psk = doc["WiFi"]["psk"] | "";
-    // strlcpy(config.wirelesscfg.espmode, doc["WiFi"]["espmode"] | "WIFI_STA", sizeof(config.wirelesscfg.espmode));
-    config.wirelesscfg.espmode = doc["WiFi"]["espmode"] | "WIFI_STA";
-    config.wirelesscfg.connRetries = doc["WiFi"]["connRetries"] |10; 
+    JsonObject DEVICE = doc["Device"];
+    cfgP->devicecfg.name = DEVICE["name"] | "";
+    cfgP->devicecfg.type = DEVICE["type"] | "esp";
+    cfgP->devicecfg.model = DEVICE["model"] | "esp8266";
+    cfgP->devicecfg.location = DEVICE["location"] | "home";
     
     //Sensors
-    config.sensorsoptcfg.OTA =           doc["Sensors"]["OTA"]           | false;
-    config.sensorsoptcfg.MQTT =          doc["Sensors"]["MQTT"]          | false;
-    config.sensorsoptcfg.WebSvr =        doc["Sensors"]["WebSvr"]        | false;
-    config.sensorsoptcfg.Temperature =   doc["Sensors"]["Temperature"]   | false;
-    config.sensorsoptcfg.Humidity =      doc["Sensors"]["Humidity"]      | false;
-    config.sensorsoptcfg.Light =         doc["Sensors"]["Light"]         | false;
-    config.sensorsoptcfg.Soil_moisture = doc["Sensors"]["Soil_moisture"] | false;
-    config.sensorsoptcfg.Soil_salt =     doc["Sensors"]["Soil_salt"]     | false;
-    config.sensorsoptcfg.Battery =       doc["Sensors"]["Battery"]       | false;
-    config.sensorsoptcfg.Level =         doc["Sensors"]["Level"]         | false;
-    config.sensorsoptcfg.Water =         doc["Sensors"]["Water"]         | false;    
-
-    //MQTT
-    // strlcpy(config.mqttcfg.server, doc["MQTT"]["server"] | "", sizeof(config.mqttcfg.server));
-    config.mqttcfg.server =  doc["MQTT"]["server"] | "";
-    config.mqttcfg.port = doc["MQTT"]["port"] | 1883;
-    // strlcpy(config.mqttcfg.user, doc["MQTT"]["user"] | "", sizeof(config.mqttcfg.user));
-    config.mqttcfg.user = doc["MQTT"]["user"] | "";
-    // strlcpy(config.mqttcfg.pas, doc["MQTT"]["pas"] | "", sizeof(config.mqttcfg.pas));
-    config.mqttcfg.pas =  doc["MQTT"]["pas"] | "";
-    // strlcpy(config.mqttcfg.home_topic_base, doc["MQTT"]["home_topic_base"] | "esp/home", sizeof(config.mqttcfg.home_topic_base)); 
-    config.mqttcfg.home_topic_base = doc["MQTT"]["home_topic_base"] | "esp/home";
-
-    //NTP
-    // strlcpy(config.ntpcfg.Server, doc["NTP"]["Server"] | "pool.ntp.org", sizeof(config.ntpcfg.Server));
-    config.ntpcfg.Server = doc["NTP"]["Server"] | "time.nist.gov";
-    config.ntpcfg.refrehFreq = doc["NTP"]["refrehFreq"] |  6000; 
-    config.ntpcfg.timeZone = doc["NTP"]["timeZone"] |  'UTC0'; 
-
-    //WebSvr
-    config.websvrcfg.port = doc["WebSvr"]["port"] |  80; 
-
+    JsonObject MODULES = doc["modules"];
+    cfgP->moduleCfg.OTA =           MODULES["OTA"]           | true;
+    cfgP->moduleCfg.MQTT =          MODULES["MQTT"]          | true;
+    cfgP->moduleCfg.WebSvr =        MODULES["WebSvr"]        | false;
+    cfgP->moduleCfg.Temperature =   MODULES["Temperature"]   | true;
+    cfgP->moduleCfg.Humidity =      MODULES["Humidity"]      | true;
+    cfgP->moduleCfg.Light =         MODULES["Light"]         | false;
+    cfgP->moduleCfg.Soil_moisture = MODULES["Soil_moisture"] | false;
+    cfgP->moduleCfg.Soil_salt =     MODULES["Soil_salt"]     | false;
+    cfgP->moduleCfg.Battery =       MODULES["Battery"]       | true;
+    cfgP->moduleCfg.Level =         MODULES["Level"]         | false;
+    cfgP->moduleCfg.Water =         MODULES["Water"]         | false;
+    cfgP->moduleCfg.ADC =           MODULES["ADC"]           | true;
+    
     //Serial
-    config.serialcomcfg.espbaud = doc["Serial"]["espbaud"] |  115200; 
+    cfgP->serialcomcfg.espbaud = doc["Serial"]["espbaud"] |  115200; 
 
     //Timers
-    config.timerscfg.MEASUREMENT_TIMEINTERVAL  = doc["Timers"]["MEASUREMENT_TIMEINTERVAL"] |  6000; 
-    config.timerscfg.TIME_TO_SLEEP  = doc["Timers"]["TIME_TO_SLEEP"] |  6000; 
-
-    //DHT
-    config.dhtcfg.pin  = doc["DHT"]["pin"] |  2; 
-    config.dhtcfg.type  = doc["DHT"]["type"] |  11; 
-
-    //OTA
-    config.otacfg.port = doc["OTA"]["port"] | 80;    
-    config.otacfg.update_server = doc["OTA"]["update_server"] | "";
-    config.otacfg.url = doc["OTA"]["url"] | "";
-    config.otacfg.update_server_port = doc["OTA"]["update_server_port"] | 80;
-    config.otacfg.secret = doc["OTA"]["secret"] | "";
-    config.otacfg.user = doc["OTA"]["user"] | "";
-    config.otacfg.pswd = doc["OTA"]["pswd"] | "";
-
-    
-
-    // strlcpy(config.wirelesscfg.hostname,                  // <- destination
-    //         doc["Device"]["name"] | "esp",                // <- source
-    //         sizeof(config.wirelesscfg.hostname));         // <- destination's capacity   
+    JsonObject TIMERS = doc["Timers"];
+    cfgP->timerscfg.MEASUREMENT_TIMEINTERVAL  = TIMERS["MEASUREMENT_TIMEINTERVAL"] |  6000; 
+    cfgP->timerscfg.TIME_TO_SLEEP  = TIMERS["TIME_TO_SLEEP"] |  6000; 
 
     file.close(); // Close the file (Curiously, File's destructor doesn't close the file)
   } else {
-    Serial.println(F("File not found"));
-    return;
+    Serial.print(F("Failed not found: ")); Serial.println(filename); 
+    return config;
   };  
   Serial.println("done processing JSON");  
 
-  #ifdef ESP32
-    SPIFFS.end();
-  #endif
-  #ifdef ESP8266
-    myfs.end(); //unmounts file system.
-    
-    FSInfo fs_info;
-    myfs.info(fs_info);
-      Serial.println( fs_info.totalBytes);
-      Serial.println(fs_info.usedBytes);
-      Serial.println(fs_info.blockSize);
-      Serial.println(fs_info.pageSize);
-      Serial.println(fs_info.maxOpenFiles);
-      Serial.println(fs_info.maxPathLength);
-  #endif
-  
-  return;
+  LittleFS.end(); //unmounts file system.
+  return config;
 }
-
-void espCFG::loadConfiguration() {
-  espCFG::loadConfiguration(filename, config);
+GlobalConfig espCFG::loadConfiguration() {
+  // GlobalConfig config;
+  config = espCFG::loadConfiguration(cfgFilename, config);
+  return config;
 }
-
 // Saves the configuration to a file
-void espCFG::saveConfiguration(const char *filename, const GlobalConfig &config) {
+bool espCFG::saveConfiguration(const char *filename, const GlobalConfig *config) {
 
   //mounts file system.
-  #ifdef ESP32    
-    SPIFFS.begin(true);
-  #endif
-  #ifdef ESP8266    
-    myfs.begin();
-  #endif
-
+  LittleFS.begin();
   // Delete existing file, otherwise the configuration is appended to the file
-  myfs.remove(filename);
+  LittleFS.remove(filename);
 
   // Open file for writing
-  File file = myfs.open(filename, "r+");
+  File file = LittleFS.open(filename, "r+");
   if (!file) {
     Serial.println(F("Failed to create file"));
-    return;
+    return 0;
   }
 
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use arduinojson.org/assistant to compute the capacity.
   StaticJsonDocument<256> doc;
-
-  // Set the values in the document
-  doc["hostname"] = config.wirelesscfg.hostname;
-  doc["port"] = config.wirelesscfg.port;
 
   // Serialize JSON to file
   if (serializeJson(doc, file) == 0) {
@@ -243,55 +159,37 @@ void espCFG::saveConfiguration(const char *filename, const GlobalConfig &config)
   file.close();
 
   //unmounts file system.
-  #ifdef ESP32    
-    SPIFFS.end();
-  #endif
-  #ifdef ESP8266    
-    myfs.end();
-  #endif
-}
+  LittleFS.end();
 
+  return 1;
+}
 void espCFG::saveConfiguration() {
-  espCFG::saveConfiguration(filename, config);
+  // GlobalConfig config;
+  espCFG::saveConfiguration(cfgFilename, cfgP);
 }
-
 // Prints the content of a file to the Serial
 void espCFG::printFile(const char *filename) {
 
   //mounts file system.
-    //unmounts file system.
-  #ifdef ESP32    
-    SPIFFS.end();
-  #endif
-  #ifdef ESP8266    
-    myfs.end();    
-  #endif
+  LittleFS.begin();
 
-    //unmounts file system.
-  #ifdef ESP32    
-    SPIFFS.end();    
-  #endif
-  #ifdef ESP8266    
-    FSInfo fs_info;
-    myfs.info(fs_info);        
-      Serial.println( fs_info.totalBytes);
-      Serial.println(fs_info.usedBytes);
-      Serial.println(fs_info.blockSize);
-      Serial.println(fs_info.pageSize);
-      Serial.println(fs_info.maxOpenFiles);
-      Serial.println(fs_info.maxPathLength);
-  #endif
-  
+  FSInfo fs_info;
+  LittleFS.info(fs_info);
 
+  Serial.println( fs_info.totalBytes);
+  Serial.println(fs_info.usedBytes);
+  Serial.println(fs_info.blockSize);
+  Serial.println(fs_info.pageSize);
+  Serial.println(fs_info.maxOpenFiles);
+  Serial.println(fs_info.maxPathLength);
 
   // Open file for reading
-  File file = myfs.open(filename, "r");
+  File file = LittleFS.open(filename, "r");
   if (!file) {
-    Serial.println(F("Failed to read file"));
-    return;
+    Serial.print(F("Failed to read file")); Serial.println(filename); 
   }
 
-  // Extract each characters one by one
+  // Extract each characters by one by one
   while (file.available()) {
     Serial.print((char)file.read());
   }
@@ -301,97 +199,49 @@ void espCFG::printFile(const char *filename) {
   file.close();
 
   //unmounts file system.
-      //unmounts file system.
-  #ifdef ESP32    
-    SPIFFS.end();    
-  #endif
-  #ifdef ESP8266    
-    FSInfo fs_info;    
-  #endif
+  LittleFS.end();
 }
-
 void espCFG::printFile(){
 
-  espCFG::printFile(filename);
+  espCFG::printFile(cfgFilename);
 
 }
-
 void espCFG::printCFG() { 
-  Serial.printf("Release: %d \n",config.cfg_rel);
-  Serial.printf("Debug mode: %s \n", config.debug? "true"  : "false");
+  Serial.printf("Release: %f",cfgP ->cfg_rel);   Serial.println();
+  Serial.printf("Debug mode: %s", cfgP ->debug? "true"  : "false");   Serial.println();
 
   Serial.println(F("Device Config")); 
-  Serial.println(config.devicecfg.name);
-  Serial.println(config.devicecfg.type);
-  Serial.println(config.devicecfg.model);
-  Serial.println(config.devicecfg.location);
+  Serial.print(F("Device Name: "));Serial.println(cfgP ->devicecfg.name);
+  Serial.print(F("Device Type: "));Serial.println(cfgP ->devicecfg.type);
+  Serial.print(F("Device Model: "));Serial.println(cfgP ->devicecfg.model);
+  Serial.print(F("Device Location: "));Serial.println(cfgP ->devicecfg.location);
  
-  Serial.println(F("WiFi Config"));
-  Serial.println(config.wirelesscfg.hostname);
-  Serial.println(config.wirelesscfg.port);
-  Serial.println(config.wirelesscfg.ssid);
-  Serial.println(config.wirelesscfg.psk);
-  Serial.println(config.wirelesscfg.espmode);
-  Serial.println(config.wirelesscfg.connRetries);
-    
-  Serial.println(F("Sensors options Config"));
-  // Serial.println(config.sensorsoptcfg.OTA);
-  // Serial.println(config.sensorsoptcfg.MQTT);
-  // Serial.println(config.sensorsoptcfg.WebSvr);
-  // Serial.println(config.sensorsoptcfg.Temperature);
-  // Serial.println(config.sensorsoptcfg.Humidity);
-  // Serial.println(config.sensorsoptcfg.Light);
-  // Serial.println(config.sensorsoptcfg.Soil_moisture);
-  // Serial.println(config.sensorsoptcfg.Soil_salt);
-  // Serial.println(config.sensorsoptcfg.Battery);
-  // Serial.println(config.sensorsoptcfg.Level);
-  // Serial.println(config.sensorsoptcfg.Water);
-  Serial.printf("Enable OTA: %s\n", config.sensorsoptcfg.OTA?"Yes":"No");
-  Serial.printf("Enable OTA Pull: %s\n", config.sensorsoptcfg.OTApull?"Yes":"No");  
-  Serial.printf("MQTT: %s\n", config.sensorsoptcfg.MQTT?"Yes":"No");
-  Serial.printf("WebSvr: %s\n", config.sensorsoptcfg.WebSvr?"Yes":"No");
-  Serial.printf("Temperature: %s\n", config.sensorsoptcfg.Temperature?"Yes":"No");
-  Serial.printf("Humidity: %s\n", config.sensorsoptcfg.Humidity?"Yes":"No");
-  Serial.printf("Light: %s\n", config.sensorsoptcfg.Light?"Yes":"No");
-  Serial.printf("Soil_Moisture: %s\n", config.sensorsoptcfg.Soil_moisture?"Yes":"No");
-  Serial.printf("Soil_salt: %s\n", config.sensorsoptcfg.Soil_salt?"Yes":"No");
-  Serial.printf("Battery: %s\n", config.sensorsoptcfg.Battery?"Yes":"No");
-  Serial.printf("Level: %s\n", config.sensorsoptcfg.Level?"Yes":"No");
-  Serial.printf("Water: %s\n", config.sensorsoptcfg.Water?"Yes":"No");
+  Serial.println(F("Module Config"));
+  Serial.printf("Enable OTA: %s", cfgP ->moduleCfg.OTA?"Yes":"No"); Serial.println();
+  Serial.printf("Enable OTA Pull: %s", cfgP ->moduleCfg.OTApull?"Yes":"No");    Serial.println(); 
+  Serial.printf("MQTT: %s", cfgP ->moduleCfg.MQTT?"Yes":"No");   Serial.println();
+  Serial.printf("WebSvr: %s", cfgP ->moduleCfg.WebSvr?"Yes":"No");   Serial.println();
+  Serial.printf("Temperature: %s", cfgP ->moduleCfg.Temperature?"Yes":"No");   Serial.println();
+  Serial.printf("Humidity: %s", cfgP ->moduleCfg.Humidity?"Yes":"No");   Serial.println();
+  Serial.printf("Light: %s", cfgP ->moduleCfg.Light?"Yes":"No");   Serial.println();
+  Serial.printf("Soil_Moisture: %s", cfgP ->moduleCfg.Soil_moisture?"Yes":"No");   Serial.println();
+  Serial.printf("Soil_salt: %s", cfgP ->moduleCfg.Soil_salt?"Yes":"No");  Serial.println();
+  Serial.printf("Battery: %s", cfgP ->moduleCfg.Battery?"Yes":"No");   Serial.println();
+  Serial.printf("Level: %s", cfgP ->moduleCfg.Level?"Yes":"No");   Serial.println();
+  Serial.printf("Water: %s", cfgP ->moduleCfg.Water?"Yes":"No");   Serial.println();
+  Serial.printf("ADC: %s", cfgP ->moduleCfg.ADC?"Yes":"No");   Serial.println();
 
-  Serial.println(F("MQTT Config"));
-  Serial.println(config.mqttcfg.server);
-  Serial.println(config.mqttcfg.port);
-  Serial.println(config.mqttcfg.user);
-  Serial.println(config.mqttcfg.pas);
-  Serial.println(config.mqttcfg.home_topic_base);
-
-  Serial.println(F("NTP Config"));
-  Serial.println(config.ntpcfg.Server);
-  Serial.println(config.ntpcfg.refrehFreq);
-  Serial.println(config.ntpcfg.timeZone);
+  // Serial.println(F("NTP Config"));
+  // Serial.println(cfgP ->ntpcfg.Server);
+  // Serial.println(cfgP ->ntpcfg.refrehFreq);
 
   Serial.println(F("WebServer Config"));
-  Serial.println(config.websvrcfg.port);
+  Serial.print(F("WebSvr Port: "));Serial.println(cfgP ->websvrcfg.port);
 
   Serial.println(F("Serial Config"));
-  Serial.println(config.serialcomcfg.espbaud);
+  Serial.print(F("Serial baud: "));Serial.println(cfgP ->serialcomcfg.espbaud);
 
   Serial.println(F("Timers Config"));
-  Serial.println(config.timerscfg.MEASUREMENT_TIMEINTERVAL);
-  Serial.println(config.timerscfg.TIME_TO_SLEEP);
-
-  Serial.println(F("DHT Config"));
-  Serial.println(config.dhtcfg.pin);
-  Serial.println(config.dhtcfg.type);
-
-  Serial.println(F("OTA Config"));
-  Serial.println(config.otacfg.port);
-  Serial.println(config.otacfg.pswd);
-  Serial.println(config.otacfg.secret);
-  Serial.println(config.otacfg.update_server);
-  Serial.println(config.otacfg.update_server_port);
-  Serial.println(config.otacfg.url);
-  Serial.println(config.otacfg.user);
-
+  Serial.print(F("Timeers Interval: "));Serial.println(cfgP ->timerscfg.MEASUREMENT_TIMEINTERVAL);
+  Serial.print(F("Timers Sleep Time: "));Serial.println(cfgP ->timerscfg.TIME_TO_SLEEP);  
 }

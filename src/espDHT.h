@@ -1,11 +1,8 @@
 #ifndef _DHT_H
 #define _DHT_H
 
-#include "espDHT.h"
-
     #include <DHT.h>
-    #include "config.h"
-
+    
     struct Sensor_Data {
         float temp_c ; // variable for temperature in Celcius
         float temp_f ; // variable for temperature in Farenheit
@@ -21,18 +18,44 @@
         unsigned long previosMillis;
     };
 
+    struct DHTconfig {
+    float cfg_rel;
+    bool debug;
+    struct DHTcfg {
+        int pin ;
+        int type; 
+        };
+        DHTcfg dhtcfg;
+    };
     
     class espDHT {
         public:
             espDHT();
             ~espDHT();
-            static void DHTsetup() ; 
-            static float readDHTTemp(bool isFarenheit=false);            
-            static float readDHTHumid();
+            static void setup() ; 
+            static float readTemp(bool isFarenheit=false);            
+            static float readHumid();
             static sensorReady sensorlatency(unsigned long previousMillis, int dly);   
             
         private:
-            void initDHT() ;    
-            int getMinimumSamplingPeriod() { return DHTTYPE != DHT11 ? 1000 : 2000; };    
-    };    
+            static void initDHT() ;    
+            static int getMinimumSamplingPeriod();
+    };
+
+    class espDHTcfg {
+            public:
+                espDHTcfg();
+                ~espDHTcfg();
+                void loadConfiguration(const char *cfgFilename,DHTconfig &mydhtcfg);
+                void loadConfiguration();
+                void saveConfiguration(const char *cfgFilename, const DHTconfig &mydhtcfg) ;
+                void saveConfiguration();
+                void printFile(const char *cfgFilename);
+                void printFile();
+                void printCFG();
+                
+            private:
+                
+        };
+    
 #endif

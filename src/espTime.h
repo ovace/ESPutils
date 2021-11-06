@@ -2,7 +2,7 @@
 #define _ESP_Time_H
 
     #include <Arduino.h>
-    #include "config.h"
+    // S#include "config.h"
 
     static String curTimestamp;
     static String curDate;    

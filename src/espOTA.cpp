@@ -15,24 +15,43 @@
     @dependency=espWiFi 
 
 */
+#include <Arduino.h>
+#include <string>
 
+#include "LittleFS.h" // LittleFS is declared
+#include <ArduinoJson.h>
 #include <ArduinoOTA.h>
 
 #ifdef ESP32
   #include <HTTPClient.h>
-  #include <HTTPUpdate.h>  
+  #include <HTTPUpdate.h>
+  // #include <WiFi.h>
 #elif defined (ESP8266)
   #include <ESP8266HTTPClient.h>
-  #include <ESP8266httpUpdate.h>  
+  #include <ESP8266httpUpdate.h>
+  // #include <ESP8266WiFi.h>
 #else 
   #error "For ESP boards only"
 #endif
 
 #include "espOTA.h"
-#include "getCfg.h"
-#include "config.h"
+extern espOTA myOta;
+espOTAcfg myOtaCfg;
+
+static String code_rel = "0.01 "; // espOTA project
+
+OTAconfig *otaCfg, myotacfg;
+// mqttCfg = &myotacfg;
+
+static const char *cfgFilename = "/espOTAconfig.json";  
+
+#define _DEBUG_ myotacfg.debug
+
 
 espOTA::espOTA() { //Class constructor
+
+};
+espOTA::~espOTA() { //Class destructor
 
 };
 
@@ -49,7 +68,7 @@ Ticker watchdog;
 
 // Optional functionality. Comment out defines to disable feature
 #define ARDUINO_OTA                   // Enable Arduino IDE OTA updates
-#define HTTP_OTA                         // Enable OTA updates from http server
+#define HTTP_OTA                      // Enable OTA updates from http server
 // #define LED_STATUS_FLASH              // Enable flashing LED status
 
 #ifdef LED_STATUS_FLASH
@@ -68,9 +87,9 @@ Ticker watchdog;
   // #include <WiFiUdp.h>
   #include <ArduinoOTA.h>
 
-  #define ARDUINO_OTA_PORT      config.otacfg.port
-  #define ARDUINO_OTA_HOSTNAME  config.wirelesscfg.hostname.c_str()
-  #define ARDUINO_OTA_PASSWD    config.otacfg.pswd.c_str()
+  #define ARDUINO_OTA_PORT      myotacfg.otacfg.port
+  #define ARDUINO_OTA_HOSTNAME  WiFi.hostname().c_str()
+  #define ARDUINO_OTA_PASSWD    myotacfg.otacfg.pswd.c_str()
 #endif
 
 #ifdef HTTP_OTA
@@ -79,11 +98,11 @@ Ticker watchdog;
    *  be downloaded and installed.  Server can determine the appropriate firmware for this 
    *  device from any combination of HTTP_OTA_VERSION, MAC address, and firmware MD5 checksums.
    */
-  #define HTTP_OTA_ADDRESS      config.otacfg.update_server       // Address of OTA update server
-  #define HTTP_OTA_PATH         config.otacfg.url                 // Path to update firmware
-  #define HTTP_OTA_PORT         config.otacfg.update_server_port  // Port of update server  
-  #define CUR_FS_VER            config.cfg_rel                    // Current config file version
-  #define CUR_FW_VER            code_rel                           // Current Firmware version                      
+  #define HTTP_OTA_ADDRESS      myotacfg.otacfg.update_server       // Address of OTA update server
+  #define HTTP_OTA_PATH         myotacfg.otacfg.url                 // Path to update firmware
+  #define HTTP_OTA_PORT         myotacfg.otacfg.update_server_port  // Port of update server  
+  #define CUR_FS_VER            myotacfg.cfg_rel                    // Current myotacfg file version
+  // #define CUR_FW_VER            code_rel                           // Current Firmware version                      
  
   #define HTTP_OTA_FIRMWARE      "firmware"   // Name of firmware
   #define HTTP_OTA_FS            "littlefs"   // Filesystem to copy to flash -- can not copy individual files, have to refresh full filesystem. Takes a while!
@@ -108,14 +127,20 @@ void timeout_cb() {
   ESP.restart();
 #endif
 }
+void espOTA::setup(String CUR_FW_VER){  
+  // read configuraton file
+  myOtaCfg.loadConfiguration();
 
-void espOTA::setup(){  
   if (_DEBUG_) {
-    Serial.printf("Chip ID: %s \n", String(ESP.getChipId()).c_str());
-    Serial.printf("Device Vcc: %s \n", String(ESP.getVcc()).c_str());    
-    Serial.println();
-    Serial.print("MAC: ");
-    Serial.println(DEVICE_MAC);
+    Serial.printf("Chip ID: %s \n", String(ESP.getChipId()).c_str()); Serial.println();
+    Serial.printf("Device Vcc: %s \n", String(ESP.getVcc()).c_str()); Serial.println();
+    Serial.println("MAC: " + DEVICE_MAC); 
+    
+    Serial.println("Configuration JSON File");
+    myOtaCfg.printFile();
+
+    Serial.println("Configuration: ");
+    myOtaCfg.printCFG();   
   }
 
   #ifdef LED_STATUS_FLASH
@@ -127,7 +152,7 @@ void espOTA::setup(){
   watchdog.once(WATCHDOG_SETUP_SECONDS, &timeout_cb);
 
   #ifdef HTTP_OTA
-    espOTA::OTA_pull();
+    espOTA::OTA_pull(CUR_FW_VER);
   #endif
 
   #ifdef ARDUINO_OTA
@@ -143,22 +168,22 @@ void espOTA::setup(){
   watchdog.detach();
 
 }
-
-void espOTA::OTA_pull() {
+void espOTA::OTA_pull(String CUR_FW_VER) {
   #ifdef HTTP_OTA
     // Check server for firmware updates
       Serial.print(F("Checking for firmware updates from server http://"));
       Serial.print(HTTP_OTA_ADDRESS);
       Serial.print(F(":"));
       Serial.print(HTTP_OTA_PORT);
-      Serial.print(HTTP_OTA_PATH);
+      Serial.println(HTTP_OTA_PATH);
       // Serial.print(F("/"));
       // // Serial.print(F("Firmware Version: "));
       // Serial.println(HTTP_OTA_FIRMWARE);
 
     if (_DEBUG_) {
-      Serial.printf("MAC Addr: %s \n", DEVICE_MAC.c_str());
+      Serial.println("MAC Addr: " +  DEVICE_MAC);
       Serial.printf("MAC ID: %s \n", espOTA::MACADDR2MACID(DEVICE_MAC.c_str()).c_str());
+      Serial.println();
       Serial.println("\nUpdate LittleFS...");
     }
 
@@ -187,10 +212,12 @@ void espOTA::OTA_pull() {
       ret = ESPhttpUpdate.updateFS(client, url, cur_ver); //(WiFiClient& client, const String& url, const String& currentVersion)      
       if ( _DEBUG_ ) {
         Serial.printf("HTTP_UPDATE status: %i \n", ret);
+        Serial.println();
       };
       switch (ret) {
           case HTTP_UPDATE_FAILED:
             Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+            Serial.println();
             break;
 
           case HTTP_UPDATE_NO_UPDATES:
@@ -222,10 +249,12 @@ void espOTA::OTA_pull() {
       //t_httpUpdate_return ret = ESPhttpUpdate.update("192.168.0.2", 80, "/esp/update/arduino.php", "optional current version string here");
       if ( _DEBUG_ ) {
         Serial.printf("HTTP_UPDATE status: %i \n", ret);
+        Serial.println();
       };
       switch (ret) {
       case HTTP_UPDATE_FAILED:
         Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str()); 
+        Serial.println();
         break;
 
       case HTTP_UPDATE_NO_UPDATES:
@@ -238,7 +267,6 @@ void espOTA::OTA_pull() {
     }
   #endif
   }
-
 void espOTA::OTA_push() {
   #ifdef ARDUINO_OTA
     // Arduino OTA Initalisation
@@ -266,6 +294,7 @@ void espOTA::OTA_push() {
     });
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
         Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+        Serial.println();
     });
     ArduinoOTA.onError([](ota_error_t error) {
         Serial.printf("Error[%u]: ", error);
@@ -277,29 +306,26 @@ void espOTA::OTA_push() {
     });
     ArduinoOTA.begin();
     Serial.printf("OTA Ready on  hostname: %s\n", ArduinoOTA.getHostname().c_str());
+    Serial.println();
   #endif
 };
-
 void espOTA::OTA_push_handle() {
   ArduinoOTA.handle();
 };
-
 void espOTA::update_started() {
   Serial.println("CALLBACK:  HTTP update process started");
 }
-
 void espOTA::update_finished() {
   Serial.println("CALLBACK:  HTTP update process finished");
 }
-
 void espOTA::update_progress(int cur, int total) {
   Serial.printf("CALLBACK:  HTTP update process at %d of %d bytes...\r", cur, total);
+  Serial.println();
 }
-
 void espOTA::update_error(int err) {
   Serial.printf("CALLBACK:  HTTP update fatal error code %d\n", err);
+  Serial.println();
 }
-
 String espOTA::MACADDR2MACID(String addr)
 {
     addr.replace(":", "");
@@ -308,4 +334,167 @@ String espOTA::MACADDR2MACID(String addr)
     String str = addr.substring(6,12);
     return str;
 }
+
+
+espOTAcfg::espOTAcfg() { //Class constructor
+ 
+};
+espOTAcfg::~espOTAcfg() { //Class destructor
+
+};
+void espOTAcfg::loadConfiguration(const char *cfgFilename, OTAconfig &myotacfg){
+//mounts file system.
+  LittleFS.begin();
+
+  FSInfo fs_info;
+  LittleFS.info(fs_info);
+    Serial.print(F("Total Bytes: "));Serial.println( fs_info.totalBytes);
+    Serial.print(F("used Bytes: "));Serial.println(fs_info.usedBytes);
+    Serial.print(F("Block Size: "));Serial.println(fs_info.blockSize);
+    Serial.print(F("Page Size: "));Serial.println(fs_info.pageSize);
+    Serial.print(F("max open files: "));Serial.println(fs_info.maxOpenFiles);
+    Serial.print(F("max path lengt: "));Serial.println(fs_info.maxPathLength);
+
+  // Open file for reading
+  if (LittleFS.exists(cfgFilename)) {
+
+    File file = LittleFS.open(cfgFilename, "r");
+    Serial.print(F("Opening myotacfg file: "));
+    Serial.println(cfgFilename);
+    if (!file) {
+      Serial.print(F("Failed to read file")); Serial.println(cfgFilename); 
+      return;
+      };
+
+    const int capacity =   JSON_OBJECT_SIZE(2) + 
+                           JSON_OBJECT_SIZE(4) + 
+                           JSON_OBJECT_SIZE(7) +                            
+                           100;
+    Serial.print("JsonBufferCapacity: "); Serial.println(capacity);
+    StaticJsonDocument<capacity> doc;
+
+    // StaticJsonDocument<300> doc;
+
+    // Deserialize the JSON document
+    DeserializationError error = deserializeJson(doc, file);
+    if (error) {  
+      Serial.print(F("Failed to read file, using default configuration"));
+      Serial.println(error.f_str());
+      return;
+    };
+    // Copy values from the JsonDocument to the myadccfg
+
+    //Release
+    myotacfg.cfg_rel = doc["release"] | 99.99;
+    myotacfg.debug = doc["debug"] | false;
+
+    //OTA
+    JsonObject OTA = doc[OTA];
+    myotacfg.otacfg.port = OTA["port"] | 80;    
+    myotacfg.otacfg.update_server = OTA["update_server"] | "";
+    myotacfg.otacfg.url = OTA["url"] | "";
+    myotacfg.otacfg.update_server_port = OTA["update_server_port"] | 80;
+    myotacfg.otacfg.secret = OTA["secret"] | "";
+    myotacfg.otacfg.user = OTA["user"] | "";
+    myotacfg.otacfg.pswd = OTA["pswd"] | "";
+    
+    file.close(); // Close the file (Curiously, File's destructor doesn't close the file)
+  } else {
+    Serial.print(F("Failed not found: ")); Serial.println(cfgFilename); 
+    return;
+  };  
+  Serial.println("done processing JSON");  
+
+  LittleFS.end(); //unmounts file system.
+  return;
+};
+void espOTAcfg::loadConfiguration(){
+  myOtaCfg.loadConfiguration(cfgFilename, myotacfg);
+};
+void espOTAcfg::saveConfiguration(const char *cfgFilename, const OTAconfig &myotacfg) {
+  //mounts file system.
+  LittleFS.begin();
+  // Delete existing file, otherwise the configuration is appended to the file
+  LittleFS.remove(cfgFilename);
+
+  // Open file for writing
+  File file = LittleFS.open(cfgFilename, "r+");
+  if (!file) {
+    Serial.println(F("Failed to create file"));
+    return;
+  }
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use arduinojson.org/assistant to compute the capacity.
+  StaticJsonDocument<256> doc;
+
+  // Set the values in the document
+  // doc["hostname"] = myadccfg.wirelesscfg.hostname;
+  // doc["port"] = myadccfg.wirelesscfg.port;
+
+  // Serialize JSON to file
+  if (serializeJson(doc, file) == 0) {
+    Serial.println(F("Failed to write to file"));
+  }
+
+  // Close the file
+  file.close();
+
+  //unmounts file system.
+  LittleFS.end();
+};
+void espOTAcfg::saveConfiguration(){
+  myOtaCfg.saveConfiguration(cfgFilename, myotacfg);
+};
+void espOTAcfg::printFile(const char *cfgFilename){
+  //mounts file system.
+  LittleFS.begin();
+
+  FSInfo fs_info;
+  LittleFS.info(fs_info);
+
+  Serial.println( fs_info.totalBytes);
+  Serial.println(fs_info.usedBytes);
+  Serial.println(fs_info.blockSize);
+  Serial.println(fs_info.pageSize);
+  Serial.println(fs_info.maxOpenFiles);
+  Serial.println(fs_info.maxPathLength);
+
+  // Open file for reading
+  File file = LittleFS.open(cfgFilename, "r");
+  if (!file) {
+    Serial.println(F("Failed to read file"));
+    return;
+  }
+
+  // Extract each characters by one by one
+  while (file.available()) {
+    Serial.print((char)file.read());
+  }
+  Serial.println();
+
+  // Close the file
+  file.close();
+
+  //unmounts file system.
+  LittleFS.end();
+};
+void espOTAcfg::printFile(){
+  myOtaCfg.printFile(cfgFilename);
+};
+void espOTAcfg::printCFG(){
+  Serial.printf("Release: %f ",myotacfg.cfg_rel); Serial.println();
+  Serial.printf("Debug mode: %s ", myotacfg.debug? "true"  : "false"); Serial.println();
+  
+  Serial.println(F("OTA Config"));
+  Serial.println(myotacfg.otacfg.port);
+  Serial.println(myotacfg.otacfg.pswd);
+  Serial.println(myotacfg.otacfg.secret);
+  Serial.println(myotacfg.otacfg.update_server);
+  Serial.println(myotacfg.otacfg.update_server_port);
+  Serial.println(myotacfg.otacfg.url);
+  Serial.println(myotacfg.otacfg.user);
+};
+
 

@@ -10,13 +10,13 @@
     class espEmail {
     public:
         espEmail();
-        ~espEmail();
+        //~myEmail();
         static void SendMail(String From, String To, String Subject, String Message);  
 
     private:
-        void setup();
-        bool ErrorWhileWaitingForSMTP_Response(String Error_Code, int TimeOut);
-        bool WaitSMTPResponse(String Error_Code, int TimeOut) ;
+        static void setup();
+        static bool ErrorWhileWaitingForSMTP_Response(String Error_Code, int TimeOut);
+        static bool WaitSMTPResponse(String Error_Code, int TimeOut) ;
 
     };
 
