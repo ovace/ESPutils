@@ -222,14 +222,15 @@ boolean espTime::getNTP()
   configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER1, NTP_SERVER2);
 #endif
 
-if (!getLocalTime(timeinfo, 10000)) {
-    Serial.println("Failed to obtain time");
-    return(0);
-  }
-  time(&now);
-  now = time(nullptr);
-  Epoch = now;
-  return now;
+// if (!getLocalTime(timeinfo, 10000)) {
+//     Serial.println("Failed to obtain time");
+//     return(0);
+//   }
+//   time(&now);
+//   now = time(nullptr);
+//   Epoch = now;
+  // return now;
+  return true;
   
 };
 
